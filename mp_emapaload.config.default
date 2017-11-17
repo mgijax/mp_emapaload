@@ -77,22 +77,17 @@ LOG_VAL=${LOGDIR}/mp_emapaload.val.log
 export LOG_FILE LOG_PROC LOG_DIAG LOG_CUR LOG_VAL LOG_DEBUG
 
 # load reference
-JNUM=J:229957
+JNUM=J:????
 
-# minumum number of lines expected in the input file
-MIN_LINES=70
-
-# editor creating these annotations
-EDITOR=mgd_dbo
+# minumum number of records expected in the input file
+MIN_RECORDS=7000
 
 LOAD_QC=${MPEMAPALOAD}/bin/mpEmapQC.py
-
-export JNUM MIN_LINES EDITOR LOAD_QC
 
 #  Send debug messages to the diagnostic log (true or false)
 LOG_DEBUG=false
 
-export JNUM EDITOR LOG_DEBUG
+export JNUM MIN_RECORDS LOAD_QC LOG_DEBUG
 
 #  The name of the job stream for the load
 JOBSTREAM=mp_emapaload
@@ -106,7 +101,7 @@ export JOBSTREAM
 ###########################################################################
 
 #  The name of the load for the subject of an email notification
-MAIL_LOADNAME="MP/EMAPA relationship load"
+MAIL_LOADNAME="MP/EMAPA Relationship Load"
 
 #  Recipient list for mailing the log files (comma-separated)
 MAIL_LOG_PROC="mgiadmin"
