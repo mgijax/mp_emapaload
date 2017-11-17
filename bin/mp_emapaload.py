@@ -425,6 +425,7 @@ def parseMPFile():
 	fpLogCur.write('MP File has less than the configured minimum records: %s, number of records: %s\n' % (MIN_RECORDS, len(mpDict)))
         sys.exit('MP File has less than the configured minimum records: %s, number of records: %s' % (MIN_RECORDS, len(mpDict)))
     if DEBUG:
+	fpMtoU.write('MP ID%spreferred%smpTerm%sisObsolete%sUberon IDs%s' % (TAB, TAB, TAB, TAB, CRT))
         keys = mpDict.keys()
         keys.sort()
         for key in keys:
@@ -516,6 +517,7 @@ def parseUberonFile():
     if DEBUG:
 	keys = uberonDict.keys()
 	keys.sort()
+	fpUtoE.write('Uberon ID%sUberon Term%sisObsolete%sEmapa IDs%s' % (TAB, TAB, TAB, CRT))
 	for key in keys:
 	    rel = uberonDict[key]
 	    uberonID = rel.id1
@@ -583,6 +585,7 @@ def parseEmapaFile():
     if DEBUG:
         keys = emapaDict.keys()
         keys.sort()
+	fpEmapa.write('Emapa ID%spreferred%sEmapa Term%sisObsolete%s' % (TAB, TAB, TAB, CRT))
         for key in keys:
 	    rel = emapaDict[key]
 	    emapaId = rel.id1
@@ -607,49 +610,74 @@ def findRelationships():
     # iterate thru the MP records and get their Uberon associations
     for mpId in mpDict:
 	mpRel = mpDict[mpId]
+	mpTerm = mpRel.term
 	uberonList = mpRel.id2
 	if len(uberonList) > 1:
 	    # report #8 and load
-	    print '%s: mp Id maps to multiple uberon id%s' % (mpId, string.join(uberonList, ', '))
-	    oneMpMultiUberon.append('%s %s' % (mpId, string.join(uberonList, ', '))) 
+	    termList = []
+	    for u in uberonList:
+		uTerm = 'not in Uberon file' # default
+		if u in uberonDict:
+		    uTerm = uberonDict[u].term
+		elif u in uberonAltIdList:
+		    uTerm = 'altId'
+		termList.append('%s (%s)' % (u, uTerm))
+	    print '%s (%s): mp Id maps to multiple uberon id %s' % (mpId, mpTerm, string.join(termList, ', '))
+	    oneMpMultiUberon.append('%s (%s) %s' % (mpId, mpTerm, string.join(termList, ', '))) 
 	for ubId in uberonList:
+	    ubTerm = 'not in Uberon file'
+	    if ubId in uberonDict:
+		ubTerm = uberonDict[ubId].term
 	    if ubId in uberonAltIdList:
                 # report and skip #6 ubid is alt_id
-                print '%s ubId is alternate id: %s' % (mpId, ubId)
-                obsAltUberonInMP.append('%s ubId is alternate id: %s' % (mpId, ubId))
+                print '%s (%s) ubId is alternate id: %si (%s)' % (mpId, mpTerm, ubId, ubTerm)
+                obsAltUberonInMP.append('%s (%s) ubId is alternate id: %s (%s)' % (mpId, mpTerm, ubId, ubTerm))
 	    elif ubId in uberonDict and uberonDict[ubId].isObsolete:
                 # report and skip #6 and skip, is obsolete
-                print '%s ubId is obsolete: %s' % (mpId, ubId)
-                obsAltUberonInMP.append('%s ubId is obsolete: %s' % (mpId, ubId))
+                print '%s (%s) ubId is obsolete: %s (%s)' % (mpId, mpTerm, ubId, ubTerm)
+                obsAltUberonInMP.append('%s (%s) ubId is obsolete: %s (%s)' % (mpId, mpTerm, ubId, ubTerm))
 	    elif ubId not in uberonDict:
 	 	# report and skip #5 MP that don't map to emapa - no mp to uberon
-		print '%s ubId not in uberon file: %s' % (mpId, ubId)
-	        mpNoEmapa.append('%s %s' % (mpId, ubId))	
+		print '%s (%s) ubId not in uberon file: %s' % (mpId, mpTerm, ubId)
+	        mpNoEmapa.append('%s %s %s' % (mpId, mpTerm, ubId))	
 	    else:
-		print '%s: %s in uberon file and not obsolete or alt_id' % (mpId, ubId)
+		print '%s (%s): %s (%s) in uberon file and not obsolete or alt_id' % (mpId, mpTerm, ubId, ubTerm)
 		uberonRel = uberonDict[ubId]
+		ubTerm = uberonRel.term
 		emapaList = uberonRel.id2
 		if len(emapaList) > 1:
 		    # report and load #9 report
-		    print '%s: %s' % (ubId, string.join(emapaList, ', '))
-		    oneUberonMultiEmapa.append('%s: %s' % (ubId, string.join(emapaList, ', ')))
+		    termList = []
+		    for e in emapaList:
+			eTerm = 'not in EMAPA file'
+			if e in emapaDict:
+			    eTerm = emapaDict[e].term
+		 	elif  e in emapaAltIdList:
+			    eTerm = 'altId'
+			termList.append('%s (%s)' % (e, eTerm))
+
+		    print '%s (%s): %s' % (ubId, ubTerm, string.join(termList, ', '))
+		    oneUberonMultiEmapa.append('%s (%s): %s' % (ubId, ubTerm, string.join(termList, ', ')))
 		for emapaId in emapaList:
+		    emapaTerm = 'altId'
+		    if emapaId in emapaDict:
+			emapaTerm =  emapaDict[emapaId].term
 		    if emapaId in emapaAltIdList:
                         # report and skip #7 emapa is alt_id
-                        print  '%s emapaId is alternate id: %s' % (ubId, emapaId)
-                        obsAltEmapaInUberon.append('%s emapaId is alternate id: %s' % (ubId, emapaId))
+                        print  '%s (%s) emapaId is alternate id: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm)
+                        obsAltEmapaInUberon.append('%s (%s) emapaId is alternate id: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm))
 		    elif emapaId in emapaDict and emapaDict[emapaId].isObsolete:
                         # report and skip #7 emapa is obsolete
-                        print '%s emapaId is obsolete: %s' % (ubId, emapaId)
-                        obsAltEmapaInUberon.append('%s emapaId is obsolete: %s' % (ubId, emapaId))
+                        print '%s (%s) emapaId is obsolete: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm)
+                        obsAltEmapaInUberon.append('%s (%s) emapaId is obsolete: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm))
 		    elif emapaId not in emapaDict:
 			# report and skip #5  uberon that don't map to emapa - no uberon to emapa
-			print '%s %s emapaId not in emapa file: %s' % (mpId, ubId, emapaId)
-			mpNoEmapa.append('%s %s %s' % (mpId, ubId, emapaId))
+			print '%s (%s) %s (%s) emapaId not in emapa file: %s' % (mpId, mpTerm, ubId, ubTerm, emapaId)
+			mpNoEmapa.append('%s (%s) %s (%s) %s' % (mpId, mpTerm, ubId, ubTerm, emapaId))
 		    else:
 			# load this mpId/emapaId relationship
-			print  '%s: %s in emapa file and not obsolete or alt_id' % (ubId, emapaId)
-			print 'load %s to %s relationship' % (mpId, emapaId)
+			print  '%s (%s): %s (%s) in emapa file and not obsolete or alt_id' % (ubId, ubTerm, emapaId, emapaTerm)
+			print 'load %s (%s) to %s (%s) relationship' % (mpId, mpTerm, emapaId, emapaTerm)
 			loadedCt += 1
 def writeQC():
     fpLogCur.write('\n%s Relationships Loaded\n\n' % loadedCt)
