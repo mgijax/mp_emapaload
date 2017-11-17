@@ -686,8 +686,9 @@ def writeQC():
 	fpLogCur.write('MP Terms in the MP OWL file not in the database\n')
 	fpLogCur.write('-' * 60 + '\n')
 	fpLogCur.write(string.join(mpNotInDatabase, CRT))
+	fpLogCur.write('\nTotal: %s' % len(mpNotInDatabase))
 	fpLogCur.write('%s%s' % (CRT, CRT))
-    # #4
+    # #4 - obsoleted
     if emapaNotInDatabase:
 	fpLogCur.write('EMAPA Terms in the EMAPA OBO file not in the database\n')
         fpLogCur.write('-' * 60 + '\n')
@@ -700,30 +701,35 @@ def writeQC():
 	fpLogCur.write('When MP, Uberon ID and EMAPA reported, EMAPA not in EMAPA file\n')
         fpLogCur.write('-' * 60 + '\n')
         fpLogCur.write(string.join(mpNoEmapa, CRT))
+	fpLogCur.write('\nTotal: %s' % len(mpNoEmapa))
         fpLogCur.write('%s%s' % (CRT, CRT))
     # #6
     if obsAltUberonInMP:
         fpLogCur.write('Obsolete or Alt Uberon Terms in the MP File\n')
         fpLogCur.write('-' * 60 + '\n')
         fpLogCur.write(string.join(obsAltUberonInMP, CRT))
+	fpLogCur.write('\nTotal: %s' % len(obsAltUberonInMP))
         fpLogCur.write('%s%s' % (CRT, CRT))
     # #7
     if obsAltEmapaInUberon:
         fpLogCur.write('Obsolete or Alt EMAPA Terms in the Uberon File\n')
         fpLogCur.write('-' * 60 + '\n')
         fpLogCur.write(string.join(obsAltEmapaInUberon, CRT))
+	fpLogCur.write('\nTotal: %s' % len(obsAltEmapaInUberon))
         fpLogCur.write('%s%s' % (CRT, CRT))
     # #8
     if oneMpMultiUberon:
         fpLogCur.write('MP Terms that Map to Multiple Uberon Terms\n')
         fpLogCur.write('-' * 60 + '\n')
         fpLogCur.write(string.join(oneMpMultiUberon, CRT))
+	fpLogCur.write('\nTotal: %s' % len(oneMpMultiUberon))
         fpLogCur.write('%s%s' % (CRT, CRT))
     # #9
     if oneUberonMultiEmapa:
         fpLogCur.write('Uberon Terms that Map to Multiple EMAPA Terms\n')
         fpLogCur.write('-' * 60 + '\n')
         fpLogCur.write(string.join(oneUberonMultiEmapa, CRT))
+	fpLogCur.write('\nTotal: %s' % len(oneUberonMultiEmapa))
         fpLogCur.write('%s%s' % (CRT, CRT))
     
 def doDeletes():
