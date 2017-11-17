@@ -137,6 +137,8 @@ uberonAltIdList = []
 # list of alt_id values from the emapa file
 emapaAltIdList = []
 
+# count of relationships that will be loaded
+loadedCt = 0
 # The mp_emapa relationship category key 'mp_to_emapa'
 catKey = 1005
 
@@ -563,10 +565,11 @@ def parseEmapaFile():
 	    preferred = 0
 	    if emapaId in emapaLookup:
 		termKey, isObsolete,preferred = emapaLookup[emapaId]
-	    elif emapaId != 'EMAPA:0':
+	    #elif emapaId != 'EMAPA:0':
 		# report #4
-		emapaNotInDatabase.append('%s %s' % (emapaId, emapaTerm))		
-		continue
+		#emapaNotInDatabase.append('%s %s' % (emapaId, emapaTerm))		
+		#continue
+
 	    rel.termKey = termKey
 	    rel.isObsolete = isObsolete
 	    rel.preferred = preferred
@@ -600,53 +603,56 @@ def parseEmapaFile():
 # end parseEMapaFile() -------------------------------------
 
 def findRelationships():
+    global loadedCt
     # iterate thru the MP records and get their Uberon associations
     for mpId in mpDict:
 	mpRel = mpDict[mpId]
 	uberonList = mpRel.id2
 	if len(uberonList) > 1:
 	    # report #8 and load
-	    print '%s: %s' % (mpId, string.join(uberonList, ', '))
-	    oneMpMultiUberon.append('%s associated with multiple ubId: %s' % (mpId, string.join(uberonList, ', '))) 
+	    print '%s: mp Id maps to multiple uberon id%s' % (mpId, string.join(uberonList, ', '))
+	    oneMpMultiUberon.append('%s %s' % (mpId, string.join(uberonList, ', '))) 
 	for ubId in uberonList:
-	    if ubId not in uberonDict:
+	    if ubId in uberonAltIdList:
+                # report and skip #6 ubid is alt_id
+                print '%s ubId is alternate id: %s' % (mpId, ubId)
+                obsAltUberonInMP.append('%s ubId is alternate id: %s' % (mpId, ubId))
+	    elif ubId in uberonDict and uberonDict[ubId].isObsolete:
+                # report and skip #6 and skip, is obsolete
+                print '%s ubId is obsolete: %s' % (mpId, ubId)
+                obsAltUberonInMP.append('%s ubId is obsolete: %s' % (mpId, ubId))
+	    elif ubId not in uberonDict:
 	 	# report and skip #5 MP that don't map to emapa - no mp to uberon
 		print '%s ubId not in uberon file: %s' % (mpId, ubId)
 	        mpNoEmapa.append('%s %s' % (mpId, ubId))	
-	    elif uberonDict[ubId].isObsolete:
-		# report and skip #6 and skip, is obsolete
-		print '%s ubId is obsolete: %s' % (mpId, ubId)
-		obsAltUberonInMP.append('%s ubId is obsolete: %s' % (mpId, ubId))
-	    elif ubId in uberonAltIdList:
-		# report and skip #6 ubid is alt_id
-		print '%s ubId is alternate id: %s' % (mpId, ubId)
-		obsAltUberonInMP.append('%s ubId is alternate id: %s' % (mpId, ubId))
 	    else:
-		print '%s in uberon file and not obsolete or alt_id: %s' % (mpId, ubId)
+		print '%s: %s in uberon file and not obsolete or alt_id' % (mpId, ubId)
 		uberonRel = uberonDict[ubId]
 		emapaList = uberonRel.id2
 		if len(emapaList) > 1:
 		    # report and load #9 report
 		    print '%s: %s' % (ubId, string.join(emapaList, ', '))
-		    oneUberonMultiEmapa.append('%s associated with multiple emapaId: %s' % (ubId, string.join(emapaList, ', ')))
+		    oneUberonMultiEmapa.append('%s: %s' % (ubId, string.join(emapaList, ', ')))
 		for emapaId in emapaList:
-		    if emapaId not in emapaDict:
+		    if emapaId in emapaAltIdList:
+                        # report and skip #7 emapa is alt_id
+                        print  '%s emapaId is alternate id: %s' % (ubId, emapaId)
+                        obsAltEmapaInUberon.append('%s emapaId is alternate id: %s' % (ubId, emapaId))
+		    elif emapaId in emapaDict and emapaDict[emapaId].isObsolete:
+                        # report and skip #7 emapa is obsolete
+                        print '%s emapaId is obsolete: %s' % (ubId, emapaId)
+                        obsAltEmapaInUberon.append('%s emapaId is obsolete: %s' % (ubId, emapaId))
+		    elif emapaId not in emapaDict:
 			# report and skip #5  uberon that don't map to emapa - no uberon to emapa
 			print '%s %s emapaId not in emapa file: %s' % (mpId, ubId, emapaId)
 			mpNoEmapa.append('%s %s %s' % (mpId, ubId, emapaId))
-		    elif emapaDict[emapaId].isObsolete:
-			# report and skip #7 emapa is obsolete
-			print '%s emapaId is obsolete: %s' % (ubId, emapaId)
-			obsAltEmapaInUberon.append('%s emapaId is obsolete: %s' % (ubId, emapaId))
-		    elif emapaId in emapaAltIdList:
-			# report and skip #7 emapa is alt_id
-			print  '%s emapaId is alternate id: %s' % (ubId, emapaId)
-			obsAltEmapaInUberon.append('%s emapaId is alternate id: %s' % (ubId, emapaId))
 		    else:
 			# load this mpId/emapaId relationship
-			print  '%s in emapa file and not obsolete or alt_id: %s' % (ubId, emapaId)
+			print  '%s: %s in emapa file and not obsolete or alt_id' % (ubId, emapaId)
 			print 'load %s to %s relationship' % (mpId, emapaId)
+			loadedCt += 1
 def writeQC():
+    fpLogCur.write('\n%s Relationships Loaded\n\n' % loadedCt)
     # #3
     if mpNotInDatabase:
 	fpLogCur.write('MP Terms in the MP OWL file not in the database\n')
@@ -662,6 +668,8 @@ def writeQC():
     # #5  
     if mpNoEmapa:
 	fpLogCur.write('MP Terms that do not map to EMAPA\n')
+	fpLogCur.write('When MP and Uberon ID reported, Uberon ID not in Uberon file\n')
+	fpLogCur.write('When MP, Uberon ID and EMAPA reported, EMAPA not in EMAPA file\n')
         fpLogCur.write('-' * 60 + '\n')
         fpLogCur.write(string.join(mpNoEmapa, CRT))
         fpLogCur.write('%s%s' % (CRT, CRT))
