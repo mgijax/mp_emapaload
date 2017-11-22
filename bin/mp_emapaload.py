@@ -113,6 +113,10 @@ outputDir = os.environ['OUTPUTDIR']
 relationshipFile = '%s/%s' % (outputDir, bcpFile)
 fpRelationshipFile = ''
 
+#
+# For sanity/QC checks
+#
+
 # reporting data structures
 mpNotInDatabase = []
 emapaNotInDatabase = []
@@ -137,13 +141,22 @@ uberonAltIdList = []
 # list of alt_id values from the emapa file
 emapaAltIdList = []
 
+# Lookups
+mpLookup = {} # {mpID:[termKey, isObsolete], ...}
+emapaLookup = {} # {emapaId:[termKey, isObsolete], ...}
+
 # count of relationships that will be loaded
 loadedCt = 0
+
+#
+# For loading relationships
+#
+
 # The mp_emapa relationship category key 'mp_to_emapa'
-catKey = 1005
+catKey = 1007
 
 # the mp_emapa relationship term key 'mp_to_emapa'
-relKey = 17396910
+relTermKey = 37085930
 
 # the mp_emapa qualifier key 'Not Specified'
 qualKey = 11391898
@@ -151,21 +164,24 @@ qualKey = 11391898
 # the mpo_emapa evidence key 'Not Specified'
 evidKey = 17396909
 
-# the mp_emapa reference key 'J:229957'
-refsKey = 231052
+# the mp_emapa reference key 'J:247341'
+refsKey = 257191
 
 # mp_emapaload user key
-userKey = 1558
+userKey = 1576
 
 # database primary keys, will be set to the next available from the db
-nextRelationshipKey = 1000	# MGI_Relationship._Relationship_key
+nextRelationshipKey = None	# MGI_Relationship._Relationship_key
 
-# Lookups
-mpLookup = {} # {mpID:[termKey, isObsolete], ...}
-emapaLookup = {} # {emapaId:[termKey, isObsolete], ...}
+# for bcp
+bcpin = '%s/bin/bcpin.csh' % os.environ['PG_DBUTILS']
+server = os.environ['MGD_DBSERVER']
+database = os.environ['MGD_DBNAME']
+table = 'MGI_Relationship'
 
 class Relationship:
     # Is: data object for relationship between two vocab terms
+    #     this is used by the QC checks
     # Has: a set of term attributes
     # Does: provides direct access to its attributes
     #
@@ -184,35 +200,32 @@ class Relationship:
 
 # end class Relationships -----------------------------------------
 
-# for bcp
-bcpin = '%s/bin/bcpin.csh' % os.environ['PG_DBUTILS']
-server = os.environ['MGD_DBSERVER']
-database = os.environ['MGD_DBNAME']
-table = 'MGI_Relationship'
-
 def checkArgs ():
     # Purpose: Validate the arguments to the script.
-    # Returns: Nothing
+    # Returns: 1 if error, else 0
     # Assumes: Nothing
     # Effects: exits if unexpected args found on the command line
     # Throws: Nothing
 
     if len(sys.argv) != 1:
         print USAGE
-        sys.exit(1)
-    return
+        return 1
+
+    return 0
 
 # end checkArgs() -------------------------------
 
 def init():
-    # Purpose: create lookups, open files, create db connection, gets max
-    #	keys from the db
-    # Returns: Nothing
+    # Purpose: check args, create lookups, open files, create db connection, 
+    #   gets max keys from the db
+    # Returns: 1 if error, else 0
     # Assumes: Nothing
     # Effects: Sets global variables, exits if a file can't be opened,
     #  creates files in the file system, creates connection to a database
 
     global nextRelationshipKey, mpLookup, emapaLookup
+   
+    checkArgs()
 
     #
     # Open input and output files
@@ -273,13 +286,14 @@ def init():
         isObsolete = r['isObsolete']
 	preferred = r['preferred']
         emapaLookup[emapaId] = [termKey, isObsolete, preferred]
-    return
+
+    return 0
 
 # end init() -------------------------------
 
 def openFiles ():
     # Purpose: Open input/output files.
-    # Returns: Nothing
+    # Returns: 1 if error, else 0
     # Assumes: Nothing
     # Effects: Sets global variables, exits if a file can't be opened, 
     #  creates files in the file system
@@ -323,51 +337,61 @@ def openFiles ():
     except:
 	print 'Cannot open Curator Log file: %s' % curLog
         sys.exit(1)
-    return
+
+    return 0
 
 # end openFiles() -------------------------------
 
-
 def closeFiles ():
     # Purpose: Close all file descriptors
-    # Returns: Nothing
+    # Returns: 1 if error, else 0
     # Assumes: all file descriptors were initialized
     # Effects: Nothing
     # Throws: Nothing
 
-    fpUin.close()
-    fpEin.close()
-    fpMtoU.close() 
-    fpUtoE.close()
-    fpEmapa.close()
+    try:
+	fpUin.close()
+	fpEin.close()
+	fpMtoU.close() 
+	fpUtoE.close()
+	fpEmapa.close()
 
-    fpRelationshipFile.close()
-    fpLogCur.close()
-
-    return
+	fpRelationshipFile.close()
+	fpLogCur.close()
+    except:
+	return 1
+    return 0
 
 # end closeFiles() -------------------------------
 
 def parseFiles( ): 
-    # Purpose: parses input files into data structures (and intermediate files for debugging)
-    # Returns: Nothing
+    # Purpose: parses input files into data structures 
+    #	(and intermediate files representing parsed input files when in 
+    #    DEBUG mode)
+    # Returns: 1 if error, else 0
     # Assumes: file descriptors have been initialized
     # Effects: sets global variables, writes to the file system
     # Throws: Nothing
 
-    #global nextRelationshipKey
-    #global mpDict, uberonDict, emapaDict
-    
-    #
-    # Iterate through input files creating intermediate files nd data structures for each
-    #
-    parseMPFile()
-    parseUberonFile()
-    parseEmapaFile()
+    try:
+	parseMPFile()
+	parseUberonFile()
+	parseEmapaFile()
+    except:
+	return 1
+    return 0
+
 # end parseFiles() -------------------------------------
 
 def parseMPFile():
+    # Purpose: parses MP input file into data structures, doing QC on the input
+    # Returns: 1 if error, else 0
+    # Assumes: file descriptors have been initialized
+    # Effects: sets global variables, writes to the file system
+    # Throws: Nothing
+
     global mpDict, mpNotInDatabase
+
     # --Parse the MP owl file
     # the parse function can take an open file object or a file name
     try:
@@ -436,21 +460,29 @@ def parseMPFile():
 	    isObsolete = rel.isObsolete
 	    uberonIds = string.join(rel.id2, ', ')
 	    fpMtoU.write('%s%s%s%s%s%s%s%s%s%s' % (mpID, TAB, preferred, TAB, mpTerm, TAB, isObsolete, TAB, uberonIds, CRT))
+
+    return 0
+
 # end parseMPFile() -------------------------------------
 
 def parseUberonFile():
-    global uberonDict
-    # --Parse the UBERON obo file
+    # Purpose: parses Uberon input file into data structures, doing QC on the
+    # input 
+    # Returns: 1 if error, else 0
+    # Assumes: file descriptors have been initialized
+    # Effects: sets global variables, writes to the file system
+    # Throws: Nothing
 
+    global uberonDict
+
+    # values for parsing
     nameValue = 'name:'
     altIdValue = 'alt_id:'
     recordFound = 0
-
-    # uberon specific 
     uberonIdValue = 'id: UBERON:'
     emapaXrefValue = 'xref: EMAPA:'
 
-    emapaList = [] 
+    emapaList = [] # list of emapa Ids for a given uberon term
     uberonId = ''
     uberonName = ''
     isObsolete = 0
@@ -526,17 +558,27 @@ def parseUberonFile():
 	    emapaIds = string.join(rel.id2, ', ')
 	    fpUtoE.write('%s%s%s%s%s%s%s%s' % (uberonID, TAB, uberonTerm, TAB, isObsolete, TAB, emapaIds, CRT))
 
+    return 0
+
 # end parseUberonFile() -------------------------------------
 
 def parseEmapaFile():
+    # Purpose: parses EMAPA input file into data structures, doing QC on the
+    # input
+    # Returns: 1 if error, else 0
+    # Assumes: file descriptors have been initialized
+    # Effects: sets global variables, writes to the file system
+    # Throws: Nothing
+
     global emapaDict
-    # --Parse the EMAPA obo file
+    
     print 'parsing EMAPA'
     emapaIdValue = 'id: EMAPA:'
     altIdValue = 'alt_id:'
 
     recordFound = 0
     nameValue = 'name:'
+
     lines = fpEin.readlines()
     print 'emapa lines[0]: %s' % string.strip(lines[0])
     if string.strip(lines[0]) != 'format-version: 1.2':
@@ -567,10 +609,6 @@ def parseEmapaFile():
 	    preferred = 0
 	    if emapaId in emapaLookup:
 		termKey, isObsolete,preferred = emapaLookup[emapaId]
-	    #elif emapaId != 'EMAPA:0':
-		# report #4
-		#emapaNotInDatabase.append('%s %s' % (emapaId, emapaTerm))		
-		#continue
 
 	    rel.termKey = termKey
 	    rel.isObsolete = isObsolete
@@ -593,24 +631,26 @@ def parseEmapaFile():
             emapaTerm = rel.term
             isObsolete = rel.isObsolete
 	    fpEmapa.write('%s%s%s%s%s%s%s%s' % (emapaId, TAB, preferred, TAB, emapaTerm, TAB, isObsolete, CRT))
-
-
-    # MGI_Relationship
-    #fpRelationshipFile.write('%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' % \
-    #    (nextRelationshipKey, TAB, catKey, TAB, objKey1, TAB, objKey2, TAB/, relKey, TAB, qualKey, TAB, evidKey, TAB, refsKey, TAB, userKey, TAB, userKey, TAB, DATE, TAB, DATE, CRT))
-
-    #nextRelationshipKey += 1
     
-    return
+    return 0
 
 # end parseEMapaFile() -------------------------------------
 
 def findRelationships():
-    global loadedCt
+    # Purpose: finds the transitive relationship between MP and EMAPA via Uberon
+    # and writes them to a bcp file
+    # Returns: 1 if error, else 0
+    # Assumes: file descriptors have been initialized
+    # Effects: sets global variables, writes to the file system
+    # Throws: Nothing
+
+    global loadedCt, nextRelationshipKey
+
     # iterate thru the MP records and get their Uberon associations
     for mpId in mpDict:
 	mpRel = mpDict[mpId]
 	mpTerm = mpRel.term
+	mpTermKey = mpRel.termKey
 	uberonList = mpRel.id2
 	if len(uberonList) > 1:
 	    # report #8 and load
@@ -624,8 +664,9 @@ def findRelationships():
 		termList.append('%s (%s)' % (u, uTerm))
 	    print '%s (%s): mp Id maps to multiple uberon id %s' % (mpId, mpTerm, string.join(termList, ', '))
 	    oneMpMultiUberon.append('%s (%s) %s' % (mpId, mpTerm, string.join(termList, ', '))) 
+	# For each uberon ID get the EMAPA Ids it maps to, if any
 	for ubId in uberonList:
-	    ubTerm = 'not in Uberon file'
+	    ubTerm = 'not in Uberon file' # default
 	    if ubId in uberonDict:
 		ubTerm = uberonDict[ubId].term
 	    if ubId in uberonAltIdList:
@@ -659,9 +700,10 @@ def findRelationships():
 		    print '%s (%s): %s' % (ubId, ubTerm, string.join(termList, ', '))
 		    oneUberonMultiEmapa.append('%s (%s): %s' % (ubId, ubTerm, string.join(termList, ', ')))
 		for emapaId in emapaList:
-		    emapaTerm = 'altId'
+		    emapaTerm = 'altId' # default
 		    if emapaId in emapaDict:
 			emapaTerm =  emapaDict[emapaId].term
+
 		    if emapaId in emapaAltIdList:
                         # report and skip #7 emapa is alt_id
                         print  '%s (%s) emapaId is alternate id: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm)
@@ -679,7 +721,28 @@ def findRelationships():
 			print  '%s (%s): %s (%s) in emapa file and not obsolete or alt_id' % (ubId, ubTerm, emapaId, emapaTerm)
 			print 'load %s (%s) to %s (%s) relationship' % (mpId, mpTerm, emapaId, emapaTerm)
 			loadedCt += 1
-def writeQC():
+			emapaRel = emapaDict[emapaId]
+
+			objKey1 = mpTermKey
+			objKey2 = emapaRel.termKey
+
+			# MGI_Relationship
+			fpRelationshipFile.write('%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' % \
+			    (nextRelationshipKey, TAB, catKey, TAB, objKey1, TAB, objKey2, TAB, relTermKey, TAB, qualKey, TAB, evidKey, TAB, refsKey, TAB, userKey, TAB, userKey, TAB, DATE, TAB, DATE, CRT))
+
+			nextRelationshipKey += 1
+
+    return 0
+
+# end findRelationships() ---------------------------------------------------
+
+def writeCuratorLog():
+    # Purpose: writes QC errors to the curator log
+    # Returns: 1 if error, else 0
+    # Assumes: file descriptors have been initialized
+    # Effects: sets global variables, writes to the file system
+    # Throws: Nothing
+
     fpLogCur.write('\n%s Relationships Loaded\n\n' % loadedCt)
     # #3
     if mpNotInDatabase:
@@ -731,23 +794,46 @@ def writeQC():
         fpLogCur.write(string.join(oneUberonMultiEmapa, CRT))
 	fpLogCur.write('\nTotal: %s' % len(oneUberonMultiEmapa))
         fpLogCur.write('%s%s' % (CRT, CRT))
-    
+
+    return 0
+
+# end writeCuratorLog() -------------------------------
+
 def doDeletes():
+    # Purpose: deletes all MGI_Relationships created by this load
+    # Returns: 1 if error, else 0
+    # Assumes:  database connection exists
+    # Effects: queries a database, writes number deleted to curation log
+    # Throws: Nothing
+
+    results = db.sql('''select count(*) as deleteCt 
+	from MGI_Relationship 
+	where _CreatedBy_key = %s ''' % userKey, 'auto')
+    print 'results: %s' % results
+    deleteCt = 0
+    for r in results:
+	deleteCt = r['deleteCt']
+    fpLogCur.write('\nDeleting %s Relationships\n\n' % deleteCt)
     db.sql('''delete from MGI_Relationship where _CreatedBy_key = %s ''' % userKey, None)
     db.commit()
     db.useOneConnection(0)
 
-    return
+    return 0
 
 # end doDeletes() -------------------------------------
 
 def doBcp():
+    # Purpose: executes bcp
+    # Returns: 1 if error, else 0
+    # Assumes: file descriptors have been initialized
+    # Effects: sets global variables, writes to the file system
+    # Throws: Nothing
+
     bcpCmd = '%s %s %s %s %s %s "\\t" "\\n" mgd' % (bcpin, server, database, table, outputDir, bcpFile)
     rc = os.system(bcpCmd)
-    if rc <> 0:
-        closeFiles()
-        sys.exit(2)
-    return
+    return rc
+
+# end doBcp() -----------------------------------------
 
 #####################
 #
@@ -755,30 +841,56 @@ def doBcp():
 #
 #####################
 
-# check the arguments to this script, exit(1) if incorrect args
-checkArgs()
+print '%s' % mgi_utils.date()
+print 'running init'
+if init() != 0:
+    print 'Initialization failed'
+    closeFiles()
+    sys.exit(1)
 
-# exit(1) if errors opening files
-init()
-
-# validate data and create load bcp files
-parseFiles()
+# parse the three input files
+print '%s' % mgi_utils.date()
+print 'running parseFiles'
+if parseFiles() != 0:
+    print 'Parsing Files failed'
+    closeFiles()
+    sys.exit(1)
 
 # find the transitive relationships between mp and emapa
-findRelationships()
+print '%s' % mgi_utils.date()
+print 'running findRelationships'
+if findRelationships() != 0:
+    print 'Finding Relationships failed'
+    closeFiles()
+    sys.exit(1)
 
 # write QC
-writeQC()
-
-# join the three files to find relationships
-
-# close all output files
-closeFiles()
+print '%s' % mgi_utils.date()
+print 'running writeCuratorLog'
+if writeCuratorLog() != 0:
+    print 'Writing the Curator Log failed'
+    closeFiles()
+    sys.exit(1)
 
 # delete existing relationships
-#doDeletes()
+print '%s' % mgi_utils.date()
+print 'running doDeletes()'
+if doDeletes() != 0:
+    print 'Do Deletes failed'
+    sys.exit(1)
 
-# exit(2) if bcp command fails
-#doBcp()
+# close all output files
+print '%s' % mgi_utils.date()
+print 'running closeFiles()'
+if closeFiles() != 0:
+    print 'Closing Files failed'
+    sys.exit(1)
+
+# execute bcp
+print '%s' % mgi_utils.date()
+print 'running doBcp()'
+if doBcp() != 0:
+    print 'Do BCP failed'
+    sys.exit(1)
 
 sys.exit(0)

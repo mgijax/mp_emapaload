@@ -77,7 +77,7 @@ LOG_VAL=${LOGDIR}/mp_emapaload.val.log
 export LOG_FILE LOG_PROC LOG_DIAG LOG_CUR LOG_VAL LOG_DEBUG
 
 # load reference
-JNUM=J:????
+JNUM=J:247341
 
 # minumum number of records expected in the input file
 MIN_RECORDS=7000
