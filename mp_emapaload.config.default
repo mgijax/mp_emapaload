@@ -74,7 +74,12 @@ LOG_DIAG=${LOGDIR}/mp_emapaload.diag.log
 LOG_CUR=${LOGDIR}/mp_emapaload.cur.log
 LOG_VAL=${LOGDIR}/mp_emapaload.val.log
 
-export LOG_FILE LOG_PROC LOG_DIAG LOG_CUR LOG_VAL LOG_DEBUG
+export LOG_FILE LOG_PROC LOG_DIAG LOG_CUR LOG_VAL
+
+# if true delete and bcp will not be done
+QC_ONLY=false
+
+export QC_ONLY
 
 # load reference
 JNUM=J:247341
@@ -84,10 +89,7 @@ MIN_RECORDS=7000
 
 LOAD_QC=${MPEMAPALOAD}/bin/mpEmapQC.py
 
-#  Send debug messages to the diagnostic log (true or false)
-LOG_DEBUG=false
-
-export JNUM MIN_RECORDS LOAD_QC LOG_DEBUG
+export JNUM MIN_RECORDS LOAD_QC
 
 #  The name of the job stream for the load
 JOBSTREAM=mp_emapaload
