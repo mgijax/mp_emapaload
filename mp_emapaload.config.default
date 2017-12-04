@@ -87,9 +87,7 @@ JNUM=J:247341
 # minumum number of records expected in the input file
 MIN_RECORDS=7000
 
-LOAD_QC=${MPEMAPALOAD}/bin/mpEmapQC.py
-
-export JNUM MIN_RECORDS LOAD_QC
+export JNUM MIN_RECORDS
 
 #  The name of the job stream for the load
 JOBSTREAM=mp_emapaload
