@@ -83,6 +83,9 @@ USAGE='mp_emapaload.py'
 # if true, write out to mp, uberon and emapa files
 DEBUG = 1
 
+# true if we want to run QC and not load relationships
+QC_ONLY = os.environ['QC_ONLY']
+
 # min number of records expected
 MIN_RECORDS = int(os.environ['MIN_RECORDS'])
 
@@ -531,10 +534,6 @@ def parseUberonFile():
 	    #print 'emapaId: %s' % emapaId
 	    if emapaId not in emapaList: # don't want duplicates
 		emapaList.append(emapaId)
-	    #if emapaId.find('RETIRED') != -1:
-	    #    print 'this emapaId is retired, continuing'
-	    #    recordFound = 0
-	    #    continue
         elif recordFound and line[:7] == altIdValue:
 	    altId = line[8:-1] 
 	    uberonAltIdList.append(altId)
@@ -663,7 +662,9 @@ def findRelationships():
 		    uTerm = 'altId'
 		termList.append('%s (%s)' % (u, uTerm))
 	    print '%s (%s): mp Id maps to multiple uberon id %s' % (mpId, mpTerm, string.join(termList, ', '))
-	    oneMpMultiUberon.append('%s (%s) %s' % (mpId, mpTerm, string.join(termList, ', '))) 
+	    msg = '%s (%s) %s' % (mpId, mpTerm, string.join(termList, ', '))
+	    if msg not in oneMpMultiUberon:
+		oneMpMultiUberon.append(msg)
 	# For each uberon ID get the EMAPA Ids it maps to, if any
 	for ubId in uberonList:
 	    ubTerm = 'not in Uberon file' # default
@@ -672,20 +673,32 @@ def findRelationships():
 	    if ubId in uberonAltIdList:
                 # report and skip #6 ubid is alt_id
                 print '%s (%s) ubId is alternate id: %si (%s)' % (mpId, mpTerm, ubId, ubTerm)
-                obsAltUberonInMP.append('%s (%s) ubId is alternate id: %s (%s)' % (mpId, mpTerm, ubId, ubTerm))
+		msg = '%s (%s) ubId is alternate id: %s (%s)' % (mpId, mpTerm, ubId, ubTerm)
+		if msg not in  obsAltUberonInMP:
+		    obsAltUberonInMP.append(msg)
 	    elif ubId in uberonDict and uberonDict[ubId].isObsolete:
                 # report and skip #6 and skip, is obsolete
                 print '%s (%s) ubId is obsolete: %s (%s)' % (mpId, mpTerm, ubId, ubTerm)
-                obsAltUberonInMP.append('%s (%s) ubId is obsolete: %s (%s)' % (mpId, mpTerm, ubId, ubTerm))
+		msg = '%s (%s) ubId is obsolete: %s (%s)' % (mpId, mpTerm, ubId, ubTerm)
+		if msg not in obsAltUberonInMP:
+		    obsAltUberonInMP.append(msg)
 	    elif ubId not in uberonDict:
 	 	# report and skip #5 MP that don't map to emapa - no mp to uberon
 		print '%s (%s) ubId not in uberon file: %s' % (mpId, mpTerm, ubId)
-	        mpNoEmapa.append('%s %s %s' % (mpId, mpTerm, ubId))	
+		msg = '%s %s %s' % (mpId, mpTerm, ubId)
+		if msg not in mpNoEmapa:
+		    mpNoEmapa.append(msg)
 	    else:
 		print '%s (%s): %s (%s) in uberon file and not obsolete or alt_id' % (mpId, mpTerm, ubId, ubTerm)
 		uberonRel = uberonDict[ubId]
 		ubTerm = uberonRel.term
 		emapaList = uberonRel.id2
+		# report and skip #5 no Uberon to EMAPA xref
+		if emapaList == []:
+		    print '%s (%s) : %s (%s) no emapa xref in uberon file' % (mpId, mpTerm, ubId, ubTerm)
+		    msg = '%s %s %s %s' % (mpId, mpTerm, ubId, ubTerm)
+		    if msg not in mpNoEmapa:
+			mpNoEmapa.append(msg)
 		if len(emapaList) > 1:
 		    # report and load #9 report
 		    termList = []
@@ -698,7 +711,9 @@ def findRelationships():
 			termList.append('%s (%s)' % (e, eTerm))
 
 		    print '%s (%s): %s' % (ubId, ubTerm, string.join(termList, ', '))
-		    oneUberonMultiEmapa.append('%s (%s): %s' % (ubId, ubTerm, string.join(termList, ', ')))
+		    msg = '%s (%s): %s' % (ubId, ubTerm, string.join(termList, ', '))
+		    if msg not in oneUberonMultiEmapa:
+			oneUberonMultiEmapa.append(msg)
 		for emapaId in emapaList:
 		    emapaTerm = 'altId' # default
 		    if emapaId in emapaDict:
@@ -707,15 +722,21 @@ def findRelationships():
 		    if emapaId in emapaAltIdList:
                         # report and skip #7 emapa is alt_id
                         print  '%s (%s) emapaId is alternate id: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm)
-                        obsAltEmapaInUberon.append('%s (%s) emapaId is alternate id: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm))
+			msg = '%s (%s) emapaId is alternate id: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm)
+			if msg not in obsAltEmapaInUberon:
+			    obsAltEmapaInUberon.append(msg)
 		    elif emapaId in emapaDict and emapaDict[emapaId].isObsolete:
                         # report and skip #7 emapa is obsolete
                         print '%s (%s) emapaId is obsolete: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm)
-                        obsAltEmapaInUberon.append('%s (%s) emapaId is obsolete: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm))
+			msg = '%s (%s) emapaId is obsolete: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm)
+			if msg not in obsAltEmapaInUberon:
+			    obsAltEmapaInUberon.append(msg)
 		    elif emapaId not in emapaDict:
 			# report and skip #5  uberon that don't map to emapa - no uberon to emapa
 			print '%s (%s) %s (%s) emapaId not in emapa file: %s' % (mpId, mpTerm, ubId, ubTerm, emapaId)
-			mpNoEmapa.append('%s (%s) %s (%s) %s' % (mpId, mpTerm, ubId, ubTerm, emapaId))
+			msg = '%s (%s) %s (%s) %s' % (mpId, mpTerm, ubId, ubTerm, emapaId)
+			if msg not in mpNoEmapa:
+			    mpNoEmapa.append(msg)
 		    else:
 			# load this mpId/emapaId relationship
 			print  '%s (%s): %s (%s) in emapa file and not obsolete or alt_id' % (ubId, ubTerm, emapaId, emapaTerm)
@@ -872,12 +893,13 @@ if writeCuratorLog() != 0:
     closeFiles()
     sys.exit(1)
 
-# delete existing relationships
-print '%s' % mgi_utils.date()
-print 'running doDeletes()'
-if doDeletes() != 0:
-    print 'Do Deletes failed'
-    sys.exit(1)
+if QC_ONLY == 'false':
+    # delete existing relationships
+    print '%s' % mgi_utils.date()
+    print 'running doDeletes()'
+    if doDeletes() != 0:
+	print 'Do Deletes failed'
+	sys.exit(1)
 
 # close all output files
 print '%s' % mgi_utils.date()
@@ -886,11 +908,12 @@ if closeFiles() != 0:
     print 'Closing Files failed'
     sys.exit(1)
 
-# execute bcp
-print '%s' % mgi_utils.date()
-print 'running doBcp()'
-if doBcp() != 0:
-    print 'Do BCP failed'
-    sys.exit(1)
+if  QC_ONLY == 'false':
+    # execute bcp
+    print '%s' % mgi_utils.date()
+    print 'running doBcp()'
+    if doBcp() != 0:
+	print 'Do BCP failed'
+	sys.exit(1)
 
 sys.exit(0)
