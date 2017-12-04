@@ -62,6 +62,7 @@ sys.setdefaultencoding('utf8')
 
 import os
 import string
+import Set
 
 import db
 import mgi_utils
@@ -150,7 +151,8 @@ emapaLookup = {} # {emapaId:[termKey, isObsolete], ...}
 
 # count of relationships that will be loaded
 loadedCt = 0
-
+distinctMpLoaded = set([])
+distinctEmapaLoaded =  set([])
 #
 # For loading relationships
 #
@@ -643,7 +645,7 @@ def findRelationships():
     # Effects: sets global variables, writes to the file system
     # Throws: Nothing
 
-    global loadedCt, nextRelationshipKey
+    global loadedCt, nextRelationshipKey, distinctMpLoaded, distinctEmapaLoaded 
 
     # iterate thru the MP records and get their Uberon associations
     for mpId in mpDict:
@@ -747,6 +749,10 @@ def findRelationships():
 			objKey1 = mpTermKey
 			objKey2 = emapaRel.termKey
 
+			# add ids to sets for distinct count reporting later
+			distinctMpLoaded.add(mpId)
+			distinctEmapaLoaded.add(emapaId)
+
 			# MGI_Relationship
 			fpRelationshipFile.write('%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' % \
 			    (nextRelationshipKey, TAB, catKey, TAB, objKey1, TAB, objKey2, TAB, relTermKey, TAB, qualKey, TAB, evidKey, TAB, refsKey, TAB, userKey, TAB, userKey, TAB, DATE, TAB, DATE, CRT))
@@ -765,6 +771,8 @@ def writeCuratorLog():
     # Throws: Nothing
 
     fpLogCur.write('\n%s Relationships Loaded\n\n' % loadedCt)
+    fpLogCur.write('%s Distinct MP Loaded\n' % len(distinctMpLoaded))
+    fpLogCur.write('%s Distinct EMAPA Loaded\n\n' % len(distinctEmapaLoaded))
     # #3
     if mpNotInDatabase:
 	fpLogCur.write('MP Terms in the MP OWL file not in the database\n')
