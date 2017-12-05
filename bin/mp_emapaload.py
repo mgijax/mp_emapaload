@@ -790,7 +790,7 @@ def writeCuratorLog():
     if mpNoEmapa:
 	fpLogCur.write('MP Terms that do not map to EMAPA\n')
 	fpLogCur.write('When MP and Uberon ID reported, Uberon ID not in Uberon file\n')
-	fpLogCur.write('When MP, Uberon ID and EMAPA reported, EMAPA not in EMAPA file\n')
+	fpLogCur.write('When MP, Uberon ID and EMAPA reported, EMAPA not in EMAPA file or no EMAPA cross reference\n')
         fpLogCur.write('-' * 60 + '\n')
         fpLogCur.write(string.join(mpNoEmapa, CRT))
 	fpLogCur.write('\nTotal: %s' % len(mpNoEmapa))
