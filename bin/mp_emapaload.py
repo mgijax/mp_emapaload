@@ -129,7 +129,8 @@ obsAltUberonInMP = []
 obsAltEmapaInUberon = []
 oneMpMultiUberon = []
 oneUberonMultiEmapa = []
-
+someValuesFromLost = []  # list of emapaIds lost because we are using 
+		     # Description field instead of someValuesFrom
 # MP to UBERON from MP file {mp:MP relationship object, ...}
 mpDict = {}
 
@@ -202,7 +203,7 @@ class Relationship:
 	self.termKey = None # null for uberon, null if not in database for mp/emapa
         self.isObsolete = None # from uberon file or db for emapa/mp
         self.id2 = [] # list of IDs, null for emapa
-
+	self.id3 = [] # for uberon only - From owl file <rdf:Description rdf:about
 # end class Relationships -----------------------------------------
 
 def checkArgs ():
@@ -438,33 +439,64 @@ def parseMPFile():
 	    # report #3
 	    mpNotInDatabase.append('%s %s' % (mpID, mpTerm))
 	    continue
-	uberonNodes = e.getElementsByTagName('owl:someValuesFrom') # node list containing uberon id
-	for n in uberonNodes:
+
+	# uberon IDs are found in two places in an owl stanza
+   	# a) If 1 only (rdf:Description rdf:about), use 1
+	# b) If 2 only (owl:someValuesFrom rdf:resource), use 2
+	# c) If both 1 and 2 (Description & resource) use 1
+	#print 'getting MP tag name "<rdf:Description"'
+	uberonDescNodes =  e.getElementsByTagName('rdf:Description')
+	#print 'uberonDescNodes: %s' % uberonDescNodes
+
+	#print 'iterating over nodes from tag name "rdf:about"'
+    	for n in uberonDescNodes:
+	    url =  n.getAttribute('rdf:about')
+	    if string.find(url, 'UBERON_') != -1:
+                uberonDescID =  string.split(url, '/')[-1]
+                uberonDescID =  uberonDescID.replace('_', ':')
+		if uberonDescID not in rel.id3: # don't want duplicates
+		    rel.id3.append(uberonDescID)
+	#print 'getting MP tag name "owl:someValuesFrom"'
+	uberonSomeNodes = e.getElementsByTagName('owl:someValuesFrom') # node list containing uberon id
+	#print 'uberonSomeNodes: %s' % uberonSomeNodes
+	#print 'iterating over nodes from tag name "owl:someValuesFrom"'
+	for n in uberonSomeNodes:
 	    url = n.getAttribute('rdf:resource')
 	    if string.find(url, 'UBERON_') != -1:
-		uberonID =  string.split(url, '/')[-1]
-		uberonID =  uberonID.replace('_', ':')
-		if uberonID not in rel.id2: # don't want duplicates
-		    rel.id2.append(uberonID)
+		#print 'found "UBERON_"'
+		uberonSomeID =  string.split(url, '/')[-1]
+		#print 'split on / ID: %s' % uberonSomeID
+		uberonSomeID =  uberonSomeID.replace('_', ':')
+		#print 'replace _/: ID: %s' % uberonSomeID
+		if uberonSomeID not in rel.id2: # don't want duplicates
+		    rel.id2.append(uberonSomeID)
 	mpDict[mpID] = rel
     # write out to file for DEBUG
     print 'MP records: %s' % len(mpDict)
+    print 'len(mpDict): %s' % len(mpDict)
     if len(mpDict) < MIN_RECORDS:
 	# sanity #2
 	fpLogCur.write('MP File has less than the configured minimum records: %s, number of records: %s\n' % (MIN_RECORDS, len(mpDict)))
         sys.exit('MP File has less than the configured minimum records: %s, number of records: %s' % (MIN_RECORDS, len(mpDict)))
     if DEBUG:
-	fpMtoU.write('MP ID%spreferred%smpTerm%sisObsolete%sUberon IDs%s' % (TAB, TAB, TAB, TAB, CRT))
+	print 'in DEBUG'
+	fpMtoU.write('MP ID%spreferred%smpTerm%sisObsolete%sUberon Some IDs%sUberon Desc IDs%s' % (TAB, TAB, TAB, TAB, TAB, CRT))
         keys = mpDict.keys()
         keys.sort()
         for key in keys:
+	    print 'key: %s' % key
 	    rel = mpDict[key]
 	    mpID = rel.id1
+   	    print 'mpID: %s' % mpID	
 	    preferred = rel.preferred
 	    mpTerm = rel.term
 	    isObsolete = rel.isObsolete
-	    uberonIds = string.join(rel.id2, ', ')
-	    fpMtoU.write('%s%s%s%s%s%s%s%s%s%s' % (mpID, TAB, preferred, TAB, mpTerm, TAB, isObsolete, TAB, uberonIds, CRT))
+	    uberonDescIds = string.join(rel.id3, ', ')
+	    print 'uberonDescIds: %s' % uberonDescIds
+	    uberonSomeIds = string.join(rel.id2, ', ')
+	    print 'uberonSomeIds: %s' % uberonSomeIds
+	    print '%s%s%s%s%s%s%s%s%s%s%s%s' % (mpID, TAB, preferred, TAB, mpTerm, TAB, isObsolete, TAB, uberonSomeIds, TAB, uberonDescIds, CRT)
+	    fpMtoU.write('%s%s%s%s%s%s%s%s%s%s%s%s' % (mpID, TAB, preferred, TAB, mpTerm, TAB, isObsolete, TAB, uberonSomeIds, TAB, uberonDescIds, CRT))
 
     return 0
 
@@ -492,9 +524,9 @@ def parseUberonFile():
     uberonName = ''
     isObsolete = 0
     firstRecord = 1
-    print 'parsing uberon'
+    print 'parsing Uberon'
     lines = fpUin.readlines()
-    print 'uberon lines[0]: "%s"' % string.strip(lines[0])
+    #print 'uberon lines[0]: "%s"' % string.strip(lines[0])
     if string.strip(lines[0]) != 'format-version: 1.2':
 	# sanity #1
 	fpLogCur.write('Uberon OBO file not in correct format, mp_emapload failed\n')
@@ -581,7 +613,7 @@ def parseEmapaFile():
     nameValue = 'name:'
 
     lines = fpEin.readlines()
-    print 'emapa lines[0]: %s' % string.strip(lines[0])
+    #print 'emapa lines[0]: %s' % string.strip(lines[0])
     if string.strip(lines[0]) != 'format-version: 1.2':
 	# sanity #1
 	fpLogCur.write('EMAPA OBO file not in correct format, mp_emapload failed\n')
@@ -646,13 +678,50 @@ def findRelationships():
     # Throws: Nothing
 
     global loadedCt, nextRelationshipKey, distinctMpLoaded, distinctEmapaLoaded 
-
+    print 'findRelationships'
     # iterate thru the MP records and get their Uberon associations
     for mpId in mpDict:
 	mpRel = mpDict[mpId]
 	mpTerm = mpRel.term
 	mpTermKey = mpRel.termKey
-	uberonList = mpRel.id2
+	uberonSomeList = mpRel.id2
+	uberonDescList = mpRel.id3
+	print 'uberonDescList: %s uberonSomeList: %s' % (uberonDescList, uberonSomeList) 
+
+	# The chosen list of uberon IDs from mpID
+	uberonList = []
+
+	if len(uberonDescList) and len(uberonSomeList):
+	    uberonList = uberonDescList # if we have uberon for both choose Description
+	    # report #10 - In cases where an mp stanza has both Description Uberon 
+	    # ID(s) and someValueFrom Uberon ID(s), report the cases where the 
+	    # Description Uberon ID(s) have no EMAPA association, but the 
+	    # someValueFrom Uberon ID(s) do have EMAPA associations. In other words - 		 
+	    # report the mappings to EMAPA that we are loosing by new requirements.
+
+	    # check the chosen list of Uberon IDs for EMAPA associations
+	    
+	    # flag to report EMAPA ID mappings from uberonSomeList
+	    reportSome = 0 # default
+	    for ubId in uberonDescList:
+		# If no emapa associations in uberonDescList - 
+		# set flag to report EMAPA IDs from uberonSomeList
+		if ubId in uberonDict and uberonDict[ubId].id2 == []:
+		    reportSome = 1
+		if reportSome:
+		    for ubId in uberonSomeList:
+			if ubId in uberonDict:
+			    emapaList = uberonDict[ubId].id2
+			    if emapaList != []:
+				print 'Emapa from someValuesFrom lost because we are using Description %s' % string.join(emapaList, ', ')
+				msg = '%s %s %s %s' % (mpId, mpTerm, ubId, string.join(emapaList, ', '))
+				if msg not in someValuesFromLost:
+				    someValuesFromLost.append(msg)
+
+	elif len(uberonDescList):
+	    uberonList = uberonDescList # if we have just Description
+	else:
+	    uberonList = uberonSomeList # otherwise choose someValuesFrom (which may be empty)
 	if len(uberonList) > 1:
 	    # report #8 and load
 	    termList = []
@@ -822,6 +891,13 @@ def writeCuratorLog():
         fpLogCur.write('-' * 60 + '\n')
         fpLogCur.write(string.join(oneUberonMultiEmapa, CRT))
 	fpLogCur.write('\nTotal: %s' % len(oneUberonMultiEmapa))
+        fpLogCur.write('%s%s' % (CRT, CRT))
+    # #10 
+    if someValuesFromLost:
+	fpLogCur.write('EMAPA from "someValuesFrom" lost because using EMAPA from Description \n')
+        fpLogCur.write('-' * 60 + '\n')
+        fpLogCur.write(string.join(someValuesFromLost, CRT))
+        fpLogCur.write('\nTotal: %s' % len(someValuesFromLost))
         fpLogCur.write('%s%s' % (CRT, CRT))
 
     return 0
