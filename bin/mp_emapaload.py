@@ -82,7 +82,7 @@ USAGE='mp_emapaload.py'
 #
 
 # if true, write out to mp, uberon and emapa files
-DEBUG = 1
+DEBUG = 0
 
 # true if we want to run QC and not load relationships
 QC_ONLY = os.environ['QC_ONLY']
@@ -406,7 +406,6 @@ def parseMPFile():
 	# sanity #1
 	fpLogCur.write('MP OWL file not in correct format, mp_emapaload failed\n')
 	sys.exit('MP OWL file not in correct format, mp_emapaload failed')
-    print 'parsing MP'
     recordCt = 0
     for e in dom.getElementsByTagName('owl:Class'): # iterate over the NodeList, e is a single Node
  	recordCt += 1
@@ -424,14 +423,10 @@ def parseMPFile():
 	    mpTerm = termNodes[0].firstChild.data
  	except:
 	    mpTerm = termNodes[1].firstChild.data
-	    print 'term found in position 2: %s' % mpTerm
-	if mpTerm == '':
-	    print 'term not found'
 	rel.id1 = mpID
 	rel.term = mpTerm
 	if mpID in mpLookup:
 	    termKey, isObsolete, preferred = mpLookup[mpID]
-	    #print '%s %s %s' % (mpID, termKey, isObsolete)
 	    rel.termKey = termKey
 	    rel.isObsolete = isObsolete
 	    rel.preferred = preferred
@@ -444,11 +439,8 @@ def parseMPFile():
    	# a) If 1 only (rdf:Description rdf:about), use 1
 	# b) If 2 only (owl:someValuesFrom rdf:resource), use 2
 	# c) If both 1 and 2 (Description & resource) use 1
-	#print 'getting MP tag name "<rdf:Description"'
 	uberonDescNodes =  e.getElementsByTagName('rdf:Description')
-	#print 'uberonDescNodes: %s' % uberonDescNodes
 
-	#print 'iterating over nodes from tag name "rdf:about"'
     	for n in uberonDescNodes:
 	    url =  n.getAttribute('rdf:about')
 	    if string.find(url, 'UBERON_') != -1:
@@ -456,28 +448,22 @@ def parseMPFile():
                 uberonDescID =  uberonDescID.replace('_', ':')
 		if uberonDescID not in rel.id3: # don't want duplicates
 		    rel.id3.append(uberonDescID)
-	#print 'getting MP tag name "owl:someValuesFrom"'
 	uberonSomeNodes = e.getElementsByTagName('owl:someValuesFrom') # node list containing uberon id
-	#print 'uberonSomeNodes: %s' % uberonSomeNodes
-	#print 'iterating over nodes from tag name "owl:someValuesFrom"'
 	for n in uberonSomeNodes:
 	    url = n.getAttribute('rdf:resource')
 	    if string.find(url, 'UBERON_') != -1:
-		#print 'found "UBERON_"'
 		uberonSomeID =  string.split(url, '/')[-1]
-		#print 'split on / ID: %s' % uberonSomeID
 		uberonSomeID =  uberonSomeID.replace('_', ':')
-		#print 'replace _/: ID: %s' % uberonSomeID
 		if uberonSomeID not in rel.id2: # don't want duplicates
 		    rel.id2.append(uberonSomeID)
 	mpDict[mpID] = rel
-    # write out to file for DEBUG
-    print 'MP records: %s' % len(mpDict)
-    print 'len(mpDict): %s' % len(mpDict)
+    
     if len(mpDict) < MIN_RECORDS:
 	# sanity #2
 	fpLogCur.write('MP File has less than the configured minimum records: %s, number of records: %s\n' % (MIN_RECORDS, len(mpDict)))
         sys.exit('MP File has less than the configured minimum records: %s, number of records: %s' % (MIN_RECORDS, len(mpDict)))
+
+    # write out to file for DEBUG
     if DEBUG:
 	print 'in DEBUG'
 	fpMtoU.write('MP ID%spreferred%smpTerm%sisObsolete%sUberon Some IDs%sUberon Desc IDs%s' % (TAB, TAB, TAB, TAB, TAB, CRT))
@@ -524,20 +510,16 @@ def parseUberonFile():
     uberonName = ''
     isObsolete = 0
     firstRecord = 1
-    print 'parsing Uberon'
     lines = fpUin.readlines()
-    #print 'uberon lines[0]: "%s"' % string.strip(lines[0])
     if string.strip(lines[0]) != 'format-version: 1.2':
 	# sanity #1
 	fpLogCur.write('Uberon OBO file not in correct format, mp_emapload failed\n')
 	sys.exit('Uberon OBO file not in correct format, mp_emapload failed')
     recordCt = 0	
     for line in lines:
-	#print 'line: %s' % line
 	if string.find(line,'[Term]') == 0:
 	    recordCt += 1
 	    recordFound = 0 
-	    #print 'New term found'
 	    if firstRecord != 1:
 		rel = Relationship()
 		rel.id1 = uberonId
@@ -551,21 +533,17 @@ def parseUberonFile():
 	    recordFound = 1
 	    emapaList = []
 	    uberonId = line[4:-1]
-	    #print 'uberonId: %s' % uberonId
 	elif recordFound and line[:5] == nameValue:
 	    uberonName = line[6:-1]
-	    #print 'uberonName: %s' % uberonName
 	    if uberonName.find('obsolete') == 0:
 		isObsolete = 1
 	    else:
 		isObsolete = 0
-	    #print 'isObsolete: %s' % isObsolete
 	elif recordFound and line[:12] == emapaXrefValue:
 
 	    emapaId = line[6:-1]
 	    # one record like this: xref: EMAPA:35128 {source="MA"}
 	    emapaId = emapaId.split(' ')[0]
-	    #print 'emapaId: %s' % emapaId
 	    if emapaId not in emapaList: # don't want duplicates
 		emapaList.append(emapaId)
         elif recordFound and line[:7] == altIdValue:
@@ -573,8 +551,6 @@ def parseUberonFile():
 	    uberonAltIdList.append(altId)
 	else: # we don't care about this line, go to the next line
 	    continue
-    print 'uberonAltIdList length: %s' % len(uberonAltIdList)
-    print 'uberon records: %s' % len(uberonDict)
     if len(uberonDict) < MIN_RECORDS:
 	# sanity #2
 	fpLogCur.write('UBERON File has less than the configured minimum records: %s, number of records: %s\n' % (MIN_RECORDS, len(uberonDict)))
@@ -605,7 +581,6 @@ def parseEmapaFile():
 
     global emapaDict
     
-    print 'parsing EMAPA'
     emapaIdValue = 'id: EMAPA:'
     altIdValue = 'alt_id:'
 
@@ -613,7 +588,6 @@ def parseEmapaFile():
     nameValue = 'name:'
 
     lines = fpEin.readlines()
-    #print 'emapa lines[0]: %s' % string.strip(lines[0])
     if string.strip(lines[0]) != 'format-version: 1.2':
 	# sanity #1
 	fpLogCur.write('EMAPA OBO file not in correct format, mp_emapload failed\n')
@@ -627,7 +601,6 @@ def parseEmapaFile():
 
 	elif line[:10] == emapaIdValue:
 	    emapaId = line[4:-1]
-	    #print emapaId
 	    recordFound = 1
 	elif recordFound and line[:7] == altIdValue:
             altId = line[8:-1]
@@ -647,8 +620,6 @@ def parseEmapaFile():
 	    rel.isObsolete = isObsolete
 	    rel.preferred = preferred
 	    emapaDict[emapaId] = rel
-    print 'emapaAltIdList length: %s' % len(emapaAltIdList) 
-    print 'emapa records: %s' % len(emapaDict)
     if len(emapaDict) < MIN_RECORDS:
 	# sanity #2
 	fpLogCur.write('EMAPA File has less than the configured minimum records: %s, number of records: %s\n' % (MIN_RECORDS, len(emapaDict)))
@@ -678,7 +649,6 @@ def findRelationships():
     # Throws: Nothing
 
     global loadedCt, nextRelationshipKey, distinctMpLoaded, distinctEmapaLoaded 
-    print 'findRelationships'
     # iterate thru the MP records and get their Uberon associations
     for mpId in mpDict:
 	mpRel = mpDict[mpId]
@@ -686,7 +656,6 @@ def findRelationships():
 	mpTermKey = mpRel.termKey
 	uberonSomeList = mpRel.id2
 	uberonDescList = mpRel.id3
-	print 'uberonDescList: %s uberonSomeList: %s' % (uberonDescList, uberonSomeList) 
 
 	# The chosen list of uberon IDs from mpID
 	uberonList = []
@@ -713,7 +682,6 @@ def findRelationships():
 			if ubId in uberonDict:
 			    emapaList = uberonDict[ubId].id2
 			    if emapaList != []:
-				print 'Emapa from someValuesFrom lost because we are using Description %s' % string.join(emapaList, ', ')
 				msg = '%s %s %s %s' % (mpId, mpTerm, ubId, string.join(emapaList, ', '))
 				if msg not in someValuesFromLost:
 				    someValuesFromLost.append(msg)
@@ -732,7 +700,6 @@ def findRelationships():
 		elif u in uberonAltIdList:
 		    uTerm = 'altId'
 		termList.append('%s (%s)' % (u, uTerm))
-	    print '%s (%s): mp Id maps to multiple uberon id %s' % (mpId, mpTerm, string.join(termList, ', '))
 	    msg = '%s (%s) %s' % (mpId, mpTerm, string.join(termList, ', '))
 	    if msg not in oneMpMultiUberon:
 		oneMpMultiUberon.append(msg)
@@ -743,30 +710,25 @@ def findRelationships():
 		ubTerm = uberonDict[ubId].term
 	    if ubId in uberonAltIdList:
                 # report and skip #6 ubid is alt_id
-                print '%s (%s) ubId is alternate id: %si (%s)' % (mpId, mpTerm, ubId, ubTerm)
 		msg = '%s (%s) ubId is alternate id: %s (%s)' % (mpId, mpTerm, ubId, ubTerm)
 		if msg not in  obsAltUberonInMP:
 		    obsAltUberonInMP.append(msg)
 	    elif ubId in uberonDict and uberonDict[ubId].isObsolete:
                 # report and skip #6 and skip, is obsolete
-                print '%s (%s) ubId is obsolete: %s (%s)' % (mpId, mpTerm, ubId, ubTerm)
 		msg = '%s (%s) ubId is obsolete: %s (%s)' % (mpId, mpTerm, ubId, ubTerm)
 		if msg not in obsAltUberonInMP:
 		    obsAltUberonInMP.append(msg)
 	    elif ubId not in uberonDict:
 	 	# report and skip #5 MP that don't map to emapa - no mp to uberon
-		print '%s (%s) ubId not in uberon file: %s' % (mpId, mpTerm, ubId)
 		msg = '%s %s %s' % (mpId, mpTerm, ubId)
 		if msg not in mpNoEmapa:
 		    mpNoEmapa.append(msg)
 	    else:
-		print '%s (%s): %s (%s) in uberon file and not obsolete or alt_id' % (mpId, mpTerm, ubId, ubTerm)
 		uberonRel = uberonDict[ubId]
 		ubTerm = uberonRel.term
 		emapaList = uberonRel.id2
 		# report and skip #5 no Uberon to EMAPA xref
 		if emapaList == []:
-		    print '%s (%s) : %s (%s) no emapa xref in uberon file' % (mpId, mpTerm, ubId, ubTerm)
 		    msg = '%s %s %s %s' % (mpId, mpTerm, ubId, ubTerm)
 		    if msg not in mpNoEmapa:
 			mpNoEmapa.append(msg)
@@ -781,7 +743,6 @@ def findRelationships():
 			    eTerm = 'altId'
 			termList.append('%s (%s)' % (e, eTerm))
 
-		    print '%s (%s): %s' % (ubId, ubTerm, string.join(termList, ', '))
 		    msg = '%s (%s): %s' % (ubId, ubTerm, string.join(termList, ', '))
 		    if msg not in oneUberonMultiEmapa:
 			oneUberonMultiEmapa.append(msg)
@@ -792,26 +753,21 @@ def findRelationships():
 
 		    if emapaId in emapaAltIdList:
                         # report and skip #7 emapa is alt_id
-                        print  '%s (%s) emapaId is alternate id: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm)
 			msg = '%s (%s) emapaId is alternate id: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm)
 			if msg not in obsAltEmapaInUberon:
 			    obsAltEmapaInUberon.append(msg)
 		    elif emapaId in emapaDict and emapaDict[emapaId].isObsolete:
                         # report and skip #7 emapa is obsolete
-                        print '%s (%s) emapaId is obsolete: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm)
 			msg = '%s (%s) emapaId is obsolete: %s (%s)' % (ubId, ubTerm, emapaId, emapaTerm)
 			if msg not in obsAltEmapaInUberon:
 			    obsAltEmapaInUberon.append(msg)
 		    elif emapaId not in emapaDict:
 			# report and skip #5  uberon that don't map to emapa - no uberon to emapa
-			print '%s (%s) %s (%s) emapaId not in emapa file: %s' % (mpId, mpTerm, ubId, ubTerm, emapaId)
 			msg = '%s (%s) %s (%s) %s' % (mpId, mpTerm, ubId, ubTerm, emapaId)
 			if msg not in mpNoEmapa:
 			    mpNoEmapa.append(msg)
 		    else:
 			# load this mpId/emapaId relationship
-			print  '%s (%s): %s (%s) in emapa file and not obsolete or alt_id' % (ubId, ubTerm, emapaId, emapaTerm)
-			print 'load %s (%s) to %s (%s) relationship' % (mpId, mpTerm, emapaId, emapaTerm)
 			loadedCt += 1
 			emapaRel = emapaDict[emapaId]
 
@@ -914,7 +870,6 @@ def doDeletes():
     results = db.sql('''select count(*) as deleteCt 
 	from MGI_Relationship 
 	where _CreatedBy_key = %s ''' % userKey, 'auto')
-    print 'results: %s' % results
     deleteCt = 0
     for r in results:
 	deleteCt = r['deleteCt']
