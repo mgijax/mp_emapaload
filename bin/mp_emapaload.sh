@@ -95,7 +95,7 @@ date >> ${LOG_DIAG}
 echo "Run mp_emapaload.py"  | tee -a ${LOG_DIAG}
 ${MPEMAPALOAD}/bin/mp_emapaload.py  
 STAT=$?
-checkStatus ${STAT} "${MPEMPALOAD}/bin/mp_emapaload.py"
+checkStatus ${STAT} "${MPEMAPALOAD}/bin/mp_emapaload.py"
 
 #
 # Archive a copy of the input file, adding a timestamp suffix.
