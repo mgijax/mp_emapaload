@@ -105,11 +105,11 @@ date >> ${LOG_DIAG}
 echo "Archive input files" >> ${LOG_DIAG}
 TIMESTAMP=`date '+%Y%m%d.%H%M'`
 ARC_FILE=`basename ${INPUT_FILE_MP}`.${TIMESTAMP}
-cp -p ${INPUT_FILE_MP} ${ARCHIVEDIR}/${ARC_FILE}
+cp  ${INPUT_FILE_MP} ${ARCHIVEDIR}/${ARC_FILE}
 ARC_FILE=`basename ${INPUT_FILE_UBERON}`.${TIMESTAMP}
-cp -p ${INPUT_FILE_UBERON} ${ARCHIVEDIR}/${ARC_FILE}
+cp  ${INPUT_FILE_UBERON} ${ARCHIVEDIR}/${ARC_FILE}
 ARC_FILE=`basename ${INPUT_FILE_EMAPA}`.${TIMESTAMP}
-cp -p ${INPUT_FILE_EMAPA} ${ARCHIVEDIR}/${ARC_FILE}
+cp ${INPUT_FILE_EMAPA} ${ARCHIVEDIR}/${ARC_FILE}
 
 # run postload cleanup and email logs
 
