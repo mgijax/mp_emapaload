@@ -76,16 +76,21 @@ then
 fi
 
 #
-# createArchive including OUTPUTDIR, startLog, getConfigEnv
+# createArchive including OUTPUTDIR, RPTDIR, startLog, getConfigEnv
 # sets "JOBKEY"
 #
 
-preload ${OUTPUTDIR}
+preload ${OUTPUTDIR} ${RPTDIR}
 
 #
 # rm all files/dirs from OUTPUTDIR
 #
 #cleanDir ${OUTPUTDIR}
+
+#
+# save current report
+#
+cp -r ${PUBREPORTDIR}/output/MP_EMAPA.rpt ${RPTDIR}/MP_EMAPA.rpt.previous
 
 #
 # run the load
@@ -96,6 +101,21 @@ echo "Run mp_emapaload.py"  | tee -a ${LOG_DIAG}
 ${MPEMAPALOAD}/bin/mp_emapaload.py  
 STAT=$?
 checkStatus ${STAT} "${MPEMAPALOAD}/bin/mp_emapaload.py"
+
+# run MP_EMAPA report, save in ${RPTDIR} directory, and diff previous with new
+echo "" >> ${LOG_DIAG}
+date >> ${LOG_DIAG}
+echo "Creating new MP_EMAPA.rpt report" >> ${LOG_DIAG}
+REPORTOUTPUTDIR=${PUBREPORTDIR}/output
+REPORTLOGSDIR=${PUBREPORTDIR}/logs
+cd ${PUBRPTS}/weekly
+./MP_EMAPA.py >> ${LOG_DIAG}
+cp -r ${PUBREPORTDIR}/output/MP_EMAPA.rpt ${RPTDIR}/MP_EMAPA.rpt.new >> ${LOG_DIAG}
+rm -rf ${RPTDIR}/diff_previous_to_new >> ${LOG_DIAG}
+echo "" >> ${LOG_DIAG}
+date >> ${LOG_DIAG}
+echo "Comparing previous MP_EMAPA.rpt with new report" >> ${LOG_DIAG}
+diff ${RPTDIR}/MP_EMAPA.rpt.previous ${RPTDIR}/MP_EMAPA.rpt.new > ${RPTDIR}/diff_previous_to_new >> ${LOG_DIAG}
 
 #
 # Archive a copy of the input file, adding a timestamp suffix.
@@ -108,6 +128,8 @@ ARC_FILE=`basename ${INPUT_FILE_MP}`.${TIMESTAMP}
 cp  ${INPUT_FILE_MP} ${ARCHIVEDIR}/${ARC_FILE}
 ARC_FILE=`basename ${INPUT_FILE_UBERON}`.${TIMESTAMP}
 cp  ${INPUT_FILE_UBERON} ${ARCHIVEDIR}/${ARC_FILE}
+ARC_FILE=`basename ${INPUT_FILE_EMAPA}`.${TIMESTAMP}
+cp ${INPUT_FILE_EMAPA} ${ARCHIVEDIR}/${ARC_FILE}
 ARC_FILE=`basename ${INPUT_FILE_EMAPA}`.${TIMESTAMP}
 cp ${INPUT_FILE_EMAPA} ${ARCHIVEDIR}/${ARC_FILE}
 
