@@ -8,15 +8,21 @@
 #     mp_emapaload.sh 
 #
 
-cd `dirname $0`/..
-CONFIG_LOAD=`pwd`/mp_emapaload.config
+cd `dirname $0` 
 
-cd `dirname $0`
-LOG=`pwd`/mp_emapaload.log
+if [ "${MGICONFIG}" = "" ]
+then
+    MGICONFIG=/usr/local/mgi/live/mgiconfig
+    export MGICONFIG
+fi
+
+. ${MGICONFIG}/master.config.sh
+
+CONFIG_LOAD=${MPEMAPALOAD}/mp_emapaload.config
+LOG=${MPEMAPALOAD}/mp_emapaload.log
 rm -rf ${LOG}
 
 USAGE='Usage: mp_emapaload.sh'
-SCHEMA='mgd'
 
 #
 #  Verify the argument(s) to the shell script.
