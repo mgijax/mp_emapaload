@@ -114,6 +114,7 @@ date >> ${LOG_DIAG}
 echo "Creating new MP_EMAPA.rpt report" >> ${LOG_DIAG}
 REPORTOUTPUTDIR=${PUBREPORTDIR}/output
 REPORTLOGSDIR=${PUBREPORTDIR}/logs
+export REPORTOUTPUTDIR REPORTLOGSDIR
 cd ${PUBRPTS}/weekly
 ./MP_EMAPA.py >> ${LOG_DIAG}
 cp -r ${PUBREPORTDIR}/output/MP_EMAPA.rpt ${RPTDIR}/MP_EMAPA.rpt.new >> ${LOG_DIAG}
