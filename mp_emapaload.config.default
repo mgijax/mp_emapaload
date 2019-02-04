@@ -73,8 +73,9 @@ LOG_PROC=${LOGDIR}/mp_emapaload.proc.log
 LOG_DIAG=${LOGDIR}/mp_emapaload.diag.log
 LOG_CUR=${LOGDIR}/mp_emapaload.cur.log
 LOG_VAL=${LOGDIR}/mp_emapaload.val.log
+LOG_DIFF=${RPTDIR}/diff_previous_to_new
 
-export LOG_FILE LOG_PROC LOG_DIAG LOG_CUR LOG_VAL
+export LOG_FILE LOG_PROC LOG_DIAG LOG_CUR LOG_VAL LOG_DIFF
 
 # if true delete and bcp will not be done
 QC_ONLY=false
@@ -107,6 +108,10 @@ MAIL_LOADNAME="MP/EMAPA Relationship Load"
 MAIL_LOG_PROC="mgiadmin"
 
 export MAIL_LOADNAME MAIL_LOG_PROC
+
+# Curator log is emailed
+MAIL_LOG_CUR="terry.hayamizu@jax.org"
+export MAIL_LOG_CUR
 
 INSTALLDIR=${MPEMAPALOAD}
 export INSTALLDIR

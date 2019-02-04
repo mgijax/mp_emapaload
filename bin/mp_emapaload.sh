@@ -109,6 +109,7 @@ STAT=$?
 checkStatus ${STAT} "${MPEMAPALOAD}/bin/mp_emapaload.py"
 
 # run MP_EMAPA report, save in ${RPTDIR} directory, and diff previous with new
+# send results to ${MAIL_LOG_CUR}
 echo "" >> ${LOG_DIAG}
 date >> ${LOG_DIAG}
 echo "Creating new MP_EMAPA.rpt report" >> ${LOG_DIAG}
@@ -118,11 +119,11 @@ export REPORTOUTPUTDIR REPORTLOGSDIR
 cd ${PUBRPTS}/weekly
 ./MP_EMAPA.py >> ${LOG_DIAG}
 cp -r ${PUBREPORTDIR}/output/MP_EMAPA.rpt ${RPTDIR}/MP_EMAPA.rpt.new >> ${LOG_DIAG}
-rm -rf ${RPTDIR}/diff_previous_to_new >> ${LOG_DIAG}
-echo "" >> ${LOG_DIAG}
-date >> ${LOG_DIAG}
-echo "Comparing previous MP_EMAPA.rpt with new report" >> ${LOG_DIAG}
-diff ${RPTDIR}/MP_EMAPA.rpt.previous ${RPTDIR}/MP_EMAPA.rpt.new > ${RPTDIR}/diff_previous_to_new >> ${LOG_DIAG}
+rm -rf ${LOG_DIFF} >> ${LOG_DIAG}
+date >> ${LOG_DIFF}
+echo "Comparing previous MP_EMAPA.rpt with new report" >> ${LOG_DIFF}
+diff ${RPTDIR}/MP_EMAPA.rpt.previous ${RPTDIR}/MP_EMAPA.rpt.new >> ${LOG_DIFF}
+mailx -s "${MAIL_LOADNAME} - Diff Log" `echo ${MAIL_LOG_CUR}` < ${LOG_DIFF}
 
 #
 # Archive a copy of the input file, adding a timestamp suffix.
