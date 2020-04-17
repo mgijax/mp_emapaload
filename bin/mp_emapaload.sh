@@ -104,7 +104,7 @@ cp -r ${PUBREPORTDIR}/output/MP_EMAPA.rpt ${RPTDIR}/MP_EMAPA.rpt.previous
 echo "" >> ${LOG_DIAG}
 date >> ${LOG_DIAG}
 echo "Run mp_emapaload.py"  | tee -a ${LOG_DIAG}
-${MPEMAPALOAD}/bin/mp_emapaload.py  
+${PYTHON} ${MPEMAPALOAD}/bin/mp_emapaload.py  
 STAT=$?
 checkStatus ${STAT} "${MPEMAPALOAD}/bin/mp_emapaload.py"
 
@@ -117,7 +117,7 @@ REPORTOUTPUTDIR=${PUBREPORTDIR}/output
 REPORTLOGSDIR=${PUBREPORTDIR}/logs
 export REPORTOUTPUTDIR REPORTLOGSDIR
 cd ${PUBRPTS}/weekly
-./MP_EMAPA.py >> ${LOG_DIAG}
+${PYTHON} ./MP_EMAPA.py >> ${LOG_DIAG}
 cp -r ${PUBREPORTDIR}/output/MP_EMAPA.rpt ${RPTDIR}/MP_EMAPA.rpt.new >> ${LOG_DIAG}
 rm -rf ${LOG_DIFF} >> ${LOG_DIAG}
 date >> ${LOG_DIFF}
