@@ -70,7 +70,7 @@ from xml import *
 #
 #  CONSTANTS
 #
-TAB = '\t'
+TAB = '|'
 CRT = '\n'
 DATE = mgi_utils.date("%m/%d/%Y")
 USAGE='mp_emapaload.py'
@@ -360,6 +360,7 @@ def closeFiles ():
         fpUtoE.close()
         fpEmapa.close()
 
+        fpRelationshipFile.flush()
         fpRelationshipFile.close()
         fpLogCur.close()
     except:
@@ -887,7 +888,8 @@ def doBcp():
     # Effects: sets global variables, writes to the file system
     # Throws: Nothing
 
-    bcpCmd = '%s %s %s %s %s %s "\\t" "\\n" mgd' % (bcpin, server, database, table, outputDir, bcpFile)
+    bcpCmd = '%s %s %s %s %s %s "|" "\\n" mgd' % (bcpin, server, database, table, outputDir, bcpFile)
+    print(bcpCmd)
     rc = os.system(bcpCmd)
     return rc
 
